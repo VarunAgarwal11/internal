@@ -5,8 +5,8 @@ import AppShell, { NAV_ITEMS } from './components/layout/AppShell'
 import { EmptyState } from './components/ui/Primitives'
 import LoginPage from './pages/LoginPage'
 import AccountSuspendedPage from './pages/AccountSuspendedPage'
-import SuppliersPage from './pages/SuppliersPage'
-import SupplierFormPage from './pages/SupplierFormPage'
+import PartnersPage from './pages/PartnersPage'
+import PartnerFormPage from './pages/PartnerFormPage'
 import AdminUsersPage from './pages/AdminUsersPage'
 import AdminRolesPage from './pages/AdminRolesPage'
 import NotFoundPage from './pages/NotFoundPage'
@@ -40,10 +40,23 @@ export default function App() {
             <Route path="/" element={<HomeRedirect />} />
 
             {/* Nested ProtectedRoute is the whole of permission routing — there is no
-                separate AdminRoute, and every one of these re-checks server-side. */}
+                separate AdminRoute, and every one of these re-checks server-side.
+                Every partner kind is the same page pair parameterized by `kind`
+                (deps.partner_dep enforces f"{kind}:{action}" on one route tree
+                server-side too) — not a second copy that a bug fix could miss. */}
             <Route element={<ProtectedRoute permission="supplier:read" />}>
-              <Route path="/suppliers" element={<SuppliersPage />} />
-              <Route path="/suppliers/:partnerId" element={<SupplierFormPage />} />
+              <Route path="/suppliers" element={<PartnersPage kind="supplier" />} />
+              <Route path="/suppliers/:partnerId" element={<PartnerFormPage kind="supplier" />} />
+            </Route>
+
+            <Route element={<ProtectedRoute permission="buyer:read" />}>
+              <Route path="/buyers" element={<PartnersPage kind="buyer" />} />
+              <Route path="/buyers/:partnerId" element={<PartnerFormPage kind="buyer" />} />
+            </Route>
+
+            <Route element={<ProtectedRoute permission="logistics_cha:read" />}>
+              <Route path="/logistics-cha" element={<PartnersPage kind="logistics_cha" />} />
+              <Route path="/logistics-cha/:partnerId" element={<PartnerFormPage kind="logistics_cha" />} />
             </Route>
 
             <Route element={<ProtectedRoute permission="user:manage" />}>

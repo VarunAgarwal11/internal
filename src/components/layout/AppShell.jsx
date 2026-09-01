@@ -3,13 +3,24 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { routeTransition } from '../../utils/motion'
 import { useAuth } from '../../context/AuthContext'
+import { KINDS } from '../../config/kinds'
 
 // The whole of this app's navigation, in one list. Each entry names the permission that
 // reveals it, so a role built in the role editor changes the sidebar with no code change.
 // Exported because HomeRedirect in App.jsx sends you to the first item you can see —
 // the "which page is home" answer has to be derived from the same list, not a second one.
+//
+// The partner rows come from KINDS (insertion order), because a kind's path, label,
+// icon and f"{kind}:read" permission are already stated there — a fourth kind is a table
+// entry and a route, never a nav edit. Administration stays literal: two one-off pages
+// with nothing to derive them from.
 export const NAV_ITEMS = [
-  { to: '/suppliers', label: 'Suppliers', permission: 'supplier:read', icon: 'box' },
+  ...Object.entries(KINDS).map(([kind, { path, plural, icon }]) => ({
+    to: path,
+    label: plural,
+    permission: `${kind}:read`,
+    icon,
+  })),
   { to: '/admin/users', label: 'Users', permission: 'user:manage', icon: 'users' },
   { to: '/admin/roles', label: 'Roles', permission: 'role:manage', icon: 'shield' },
 ]
@@ -34,6 +45,22 @@ const ICONS = {
   shield: (
     <path
       d="M10 2.5l6 2.2v4.6c0 3.9-2.5 6.8-6 8.2-3.5-1.4-6-4.3-6-8.2V4.7l6-2.2z"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  ),
+  cart: (
+    <path
+      d="M2.5 3h2l1.6 9.2a1.5 1.5 0 001.5 1.3h6.4a1.5 1.5 0 001.5-1.2l1.2-6.3H5.3M8 17a1 1 0 100-2 1 1 0 000 2zM14 17a1 1 0 100-2 1 1 0 000 2z"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  ),
+  truck: (
+    <path
+      d="M2.5 5.5h8.5v7.5h-8.5zM11 8.5h3l2.5 2.5v2.5h-5.5zM6 15.9a1.3 1.3 0 100-2.6 1.3 1.3 0 000 2.6zM14 15.9a1.3 1.3 0 100-2.6 1.3 1.3 0 000 2.6z"
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"

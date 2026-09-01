@@ -14,11 +14,17 @@ import SectionShell from '../components/form/SectionShell'
 import { useSectionAutosave } from '../hooks/useSectionAutosave'
 import { fieldDomId } from '../utils/fieldId'
 import { sectionFill } from '../utils/fill'
+import { visibleSpec } from '../utils/visibility'
+import { KINDS } from '../config/kinds'
 
 const anchorFor = (sectionId) => `section-${sectionId}`
 
 // Mirrors the backend's _file_field(): one level of nesting, groups included. Needed only
 // to know whether an upload REPLACES the row already in its slot.
+//
+// Searches the UNGATED spec on purpose. The server accepts an upload against a currently
+// hidden field (turning a service off and back on has to be lossless), so resolving it
+// here against the gated spec would lose the `multiple` flag and mis-handle the replace.
 function findFileField(spec, sectionId, fieldKey) {
   const section = spec?.sections?.find((entry) => entry.id === sectionId)
   for (const field of section?.fields || []) {
@@ -29,7 +35,12 @@ function findFileField(spec, sectionId, fieldKey) {
   return null
 }
 
-export default function SupplierFormPage() {
+// Serves /suppliers/:id, /buyers/:id and /logistics-cha/:id. The renderer underneath (SectionForm,
+// Field, GroupRepeater, FileField) already reads everything it needs — labels, types,
+// options, permissions — from the spec the backend sends for this `kind`; nothing here
+// or below it hardcodes a field name, which is what makes this one component correct for
+// both forms with zero per-kind branching in the parts that actually render inputs.
+export default function PartnerFormPage({ kind }) {
   const { partnerId } = useParams()
   const { can, bootstrapping } = useAuth()
   const toast = useToast()
@@ -49,7 +60,7 @@ export default function SupplierFormPage() {
 
   useEffect(() => {
     let active = true
-    Promise.all([api.getFormSpec('supplier'), api.getPartner(partnerId)])
+    Promise.all([api.getFormSpec(kind), api.getPartner(partnerId)])
       .then(([specResult, partnerResult]) => {
         if (!active) return
         const internal = specResult.sections.find((section) => section.internal)
@@ -74,7 +85,7 @@ export default function SupplierFormPage() {
     return () => {
       active = false
     }
-  }, [partnerId])
+  }, [kind, partnerId])
 
   const internalId = useMemo(() => spec?.sections.find((section) => section.internal)?.id ?? null, [spec])
   const { statuses, saving, error: saveError, flush } = useSectionAutosave(partnerId, sections, internalId)
@@ -87,7 +98,7 @@ export default function SupplierFormPage() {
 
   // Sliced into per-section maps EXACTLY ONCE, here. This is the whole reason SectionForm
   // and Field never learn that sections exist above them — and it is what lets these same
-  // components render the buyer form later without a line changing.
+  // components render both the supplier and the buyer form with no change below this line.
   const errorsBySection = useMemo(() => {
     const out = {}
     for (const [key, message] of Object.entries(serverErrors || {})) {
@@ -116,9 +127,18 @@ export default function SupplierFormPage() {
     return out
   }, [partner?.documents])
 
+  // The spec's own gates, re-evaluated against live form state so the form reacts as the
+  // staffer answers: a partner who forwards cargo but does no customs clearing must not be
+  // shown — or blocked at submit by — a CHA licence number they will never hold. Same rule
+  // as the server's visible_spec(), which drops the same nodes before validating.
+  const gatedSections = useMemo(
+    () => (spec ? visibleSpec(spec.sections, sections) : []),
+    [spec, sections],
+  )
+
   const visibleSections = useMemo(
-    () => (spec?.sections || []).filter((section) => !section.permission || can(section.permission)),
-    [spec, can],
+    () => gatedSections.filter((section) => !section.permission || can(section.permission)),
+    [gatedSections, can],
   )
 
   const fills = useMemo(() => {
@@ -131,7 +151,7 @@ export default function SupplierFormPage() {
     )
   }, [visibleSections, sections, docsBySection])
 
-  // The supplier's own progress. The internal checklist is Mavio's work, not theirs, and
+  // The partner's own progress. The internal checklist is Mavio's work, not theirs, and
   // counting it would leave the bar short of 100% on a form with nothing left to fill in.
   const overall = useMemo(() => {
     let filled = 0
@@ -227,15 +247,15 @@ export default function SupplierFormPage() {
 
   async function handleApprove() {
     const ok = await confirm({
-      title: 'Approve this supplier?',
-      message: 'They become an approved Mavio partner. Correcting an approved record means rejecting it first.',
+      title: `Approve this ${KINDS[kind].label}?`,
+      message: `They become an approved Mavio partner. Correcting an approved record means rejecting it first.`,
       confirmLabel: 'Approve',
     })
     if (!ok) return
     setBusy(true)
     try {
       setPartner(await api.approvePartner(partnerId))
-      toast.success('Supplier approved.')
+      toast.success(`${KINDS[kind].label} approved.`)
     } catch (err) {
       toast.error(err.message)
     } finally {
@@ -258,14 +278,20 @@ export default function SupplierFormPage() {
   }
 
   if (loadError) return <Alert>{loadError}</Alert>
-  if (bootstrapping || !spec || !partner || !sections) return <LoadingState label="Loading supplier form…" />
+  if (bootstrapping || !spec || !partner || !sections) return <LoadingState label={`Loading ${KINDS[kind].label} form…`} />
 
   const status = partner.status
   // One page serves read and edit — there is no separate view route — so "read-only" is a
   // prop on every field rather than a different screen. Cosmetic: every write endpoint
   // enforces the same rule.
-  const readOnly = !can('supplier:edit') || status === 'submitted' || status === 'approved'
-  const canDecide = can('supplier:approve')
+  const readOnly = !can(`${kind}:edit`) || status === 'submitted' || status === 'approved'
+  // The internal section already declares its own gate (`section.permission` — asserted
+  // server-side to equal f"{kind}:approve" for every kind), so it is read from the spec
+  // here rather than re-typed as a literal. One source of truth for "who may approve and
+  // who may write the checklist", not a spec-driven one and a hardcoded one that a future
+  // kind's spec could disagree with.
+  const internalSection = visibleSections.find((section) => section.internal)
+  const canDecide = can(internalSection?.permission)
 
   return (
     <PageMotion>
@@ -273,7 +299,7 @@ export default function SupplierFormPage() {
       <div className="sticky top-0 z-20 -mx-4 mb-4 border-b border-ink-100 bg-white px-4 py-3 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="truncate text-xl font-medium text-ink-900">{partner.legalName || 'Untitled supplier'}</h1>
+            <h1 className="truncate text-xl font-medium text-ink-900">{partner.legalName || `Untitled ${KINDS[kind].label}`}</h1>
             <div className="mt-1 flex items-center gap-2 text-xs text-ink-500">
               <PartnerStatusBadge status={status} />
               <span>{overall}% complete</span>
@@ -331,7 +357,7 @@ export default function SupplierFormPage() {
         <aside className="md:w-60 md:shrink-0">
           <div className="md:sticky md:top-28">
             <SectionRail
-              sections={spec.sections}
+              sections={gatedSections}
               fills={fills}
               errorCounts={errorCounts}
               activeId={activeId}
@@ -366,7 +392,7 @@ export default function SupplierFormPage() {
                 onRemoveFile={handleRemoveFile}
                 // The internal checklist follows its own permission and its own endpoint:
                 // it stays writable after submit, which is exactly when it gets filled in.
-                disabled={section.internal ? !canDecide : readOnly}
+                disabled={section.internal ? !can(internalSection?.permission) : readOnly}
               />
             </SectionShell>
           ))}

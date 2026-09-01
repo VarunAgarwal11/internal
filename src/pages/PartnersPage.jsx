@@ -12,6 +12,7 @@ import Modal from '../components/ui/Modal'
 import PageMotion, { PageSection } from '../components/ui/PageMotion'
 import { listItem, staggerContainer } from '../utils/motion'
 import { formatDate } from '../utils/format'
+import { KINDS } from '../config/kinds'
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All statuses' },
@@ -21,10 +22,18 @@ const STATUS_OPTIONS = [
   { value: 'rejected', label: 'Rejected' },
 ]
 
-export default function SuppliersPage() {
+// Serves /suppliers, /buyers and /logistics-cha: the backend's permission model is already
+// f"{kind}:{action}" on one route tree (see deps.partner_dep), so one parameterized page
+// is the smaller, non-drifting mirror of that on this side — not a second ~230-line copy
+// that fixes a bug in one and not the other.
+export default function PartnersPage({ kind }) {
+  // `singular` is the label, capitalisation and all — lowercasing it for mid-sentence use
+  // would turn "Logistics / CHA partner" into "logistics / cha partner" and eat an acronym.
+  const { path: base, plural, label: singular, idLabel, idField, placeholder } = KINDS[kind]
+
   // null = still loading, [] = loaded and empty. One sentinel, so the spinner and the
   // "no results" panel can never both be right.
-  const [suppliers, setSuppliers] = useState(null)
+  const [partners, setPartners] = useState(null)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('all')
@@ -42,10 +51,10 @@ export default function SuppliersPage() {
   useEffect(() => {
     let active = true
     api
-      .getPartners({ kind: 'supplier', status, q: debouncedSearch })
+      .getPartners({ kind, status, q: debouncedSearch })
       .then((result) => {
         if (!active) return
-        setSuppliers(result)
+        setPartners(result)
         setError('')
       })
       .catch((err) => {
@@ -55,18 +64,18 @@ export default function SuppliersPage() {
     return () => {
       active = false
     }
-  }, [debouncedSearch, status])
+  }, [kind, debouncedSearch, status])
 
   async function handleCreate(e) {
     e.preventDefault()
     setSubmitting(true)
     setError('')
     try {
-      // Created first, then navigated to. There is no /suppliers/new route on purpose:
-      // in a "new" mode autosave has nothing to save against and an upload has nothing to
-      // attach to, so the row has to exist before the form opens.
-      const created = await api.createPartner({ kind: 'supplier', legalName: legalName.trim() })
-      navigate(`/suppliers/${created.id}`)
+      // Created first, then navigated to. There is no /suppliers/new (or /buyers/new)
+      // route on purpose: in a "new" mode autosave has nothing to save against and an
+      // upload has nothing to attach to, so the row has to exist before the form opens.
+      const created = await api.createPartner({ kind, legalName: legalName.trim() })
+      navigate(`${base}/${created.id}`)
     } catch (err) {
       setError(err.message)
       toast.error(err.message)
@@ -74,8 +83,8 @@ export default function SuppliersPage() {
     }
   }
 
-  async function handleDelete(supplier) {
-    const name = supplier.legalName || 'this supplier'
+  async function handleDelete(partner) {
+    const name = partner.legalName || `this ${singular}`
     if (
       !(await confirm({
         title: `Delete ${name}?`,
@@ -85,11 +94,11 @@ export default function SuppliersPage() {
       }))
     )
       return
-    setDeletingId(supplier.id)
+    setDeletingId(partner.id)
     setError('')
     try {
-      await api.deletePartner(supplier.id)
-      setSuppliers((prev) => prev.filter((s) => s.id !== supplier.id))
+      await api.deletePartner(partner.id)
+      setPartners((prev) => prev.filter((p) => p.id !== partner.id))
       toast.success(`${name} removed.`)
     } catch (err) {
       setError(err.message)
@@ -102,18 +111,18 @@ export default function SuppliersPage() {
   return (
     <PageMotion>
       <PageHeader
-        title="Suppliers"
+        title={plural}
         subtitle="Every onboarding record, draft through approved."
-        actions={can('supplier:create') && <Button onClick={() => setCreating(true)}>+ New supplier</Button>}
+        actions={can(`${kind}:create`) && <Button onClick={() => setCreating(true)}>+ New {singular}</Button>}
       />
 
       <PageSection className="mb-4 flex flex-col gap-3 sm:flex-row">
         <Input
           type="search"
-          placeholder="Search by name, GSTIN or PAN…"
+          placeholder="Search by name, GSTIN, PAN or Tax ID…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          aria-label="Search suppliers"
+          aria-label={`Search ${plural.toLowerCase()}`}
           className="sm:max-w-xs"
         />
         <Select
@@ -139,10 +148,10 @@ export default function SuppliersPage() {
       )}
 
       <PageSection>
-        {!suppliers ? (
-          error ? null : <LoadingState label="Loading suppliers…" />
-        ) : suppliers.length === 0 ? (
-          <EmptyState title="No suppliers match your filters" description="Try a different search term or status." />
+        {!partners ? (
+          error ? null : <LoadingState label={`Loading ${plural.toLowerCase()}…`} />
+        ) : partners.length === 0 ? (
+          <EmptyState title={`No ${plural.toLowerCase()} match your filters`} description="Try a different search term or status." />
         ) : (
           <Card className="overflow-hidden">
             <div className="overflow-x-auto">
@@ -151,7 +160,7 @@ export default function SuppliersPage() {
                   <tr>
                     <th className="px-5 py-3 font-medium">Legal name</th>
                     <th className="px-5 py-3 font-medium">Business type</th>
-                    <th className="px-5 py-3 font-medium">GSTIN</th>
+                    <th className="px-5 py-3 font-medium">{idLabel}</th>
                     <th className="px-5 py-3 font-medium">Status</th>
                     <th className="px-5 py-3 font-medium">Updated</th>
                     <th className="px-5 py-3 font-medium" />
@@ -163,18 +172,18 @@ export default function SuppliersPage() {
                   initial="hidden"
                   animate="show"
                 >
-                  {suppliers.map((supplier) => (
+                  {partners.map((partner) => (
                     <motion.tr
-                      key={supplier.id}
+                      key={partner.id}
                       variants={listItem}
                       tabIndex={0}
                       role="link"
-                      aria-label={`Open ${supplier.legalName || 'untitled supplier'}`}
-                      onClick={() => navigate(`/suppliers/${supplier.id}`)}
+                      aria-label={`Open ${partner.legalName || `untitled ${singular}`}`}
+                      onClick={() => navigate(`${base}/${partner.id}`)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault()
-                          navigate(`/suppliers/${supplier.id}`)
+                          navigate(`${base}/${partner.id}`)
                         }
                       }}
                       className="cursor-pointer transition-colors hover:bg-brand-50 focus-visible:bg-brand-50 focus-visible:outline-none"
@@ -182,28 +191,30 @@ export default function SuppliersPage() {
                       <td className="px-5 py-3">
                         {/* legalName is the only field POST /partners takes, but it is still
                             nullable server-side, so a row can reach here without one. */}
-                        <span className="font-medium text-brand-700">{supplier.legalName || 'Untitled supplier'}</span>
-                        {supplier.tradeName && <p className="text-xs text-ink-400">{supplier.tradeName}</p>}
+                        <span className="font-medium text-brand-700">{partner.legalName || `Untitled ${singular}`}</span>
+                        {partner.tradeName && <p className="text-xs text-ink-400">{partner.tradeName}</p>}
                       </td>
-                      <td className="px-5 py-3 text-ink-600">{supplier.businessType || '—'}</td>
-                      <td className="px-5 py-3 font-mono text-xs text-ink-600">{supplier.gstin || '—'}</td>
+                      <td className="px-5 py-3 text-ink-600">{partner.businessType || '—'}</td>
+                      <td className="px-5 py-3 font-mono text-xs text-ink-600">
+                        {partner[idField] || '—'}
+                      </td>
                       <td className="px-5 py-3">
-                        <PartnerStatusBadge status={supplier.status} />
+                        <PartnerStatusBadge status={partner.status} />
                       </td>
-                      <td className="px-5 py-3 text-ink-600">{formatDate(supplier.updatedAt)}</td>
+                      <td className="px-5 py-3 text-ink-600">{formatDate(partner.updatedAt)}</td>
                       <td
                         className="px-5 py-3 text-right"
                         onClick={(e) => e.stopPropagation()}
                         onKeyDown={(e) => e.stopPropagation()}
                       >
-                        {can('supplier:delete') && (
+                        {can(`${kind}:delete`) && (
                           <Button
                             variant="danger"
                             className="px-2.5 py-1 text-xs"
-                            disabled={deletingId === supplier.id}
-                            onClick={() => handleDelete(supplier)}
+                            disabled={deletingId === partner.id}
+                            onClick={() => handleDelete(partner)}
                           >
-                            {deletingId === supplier.id ? 'Deleting…' : 'Delete'}
+                            {deletingId === partner.id ? 'Deleting…' : 'Delete'}
                           </Button>
                         )}
                       </td>
@@ -217,7 +228,7 @@ export default function SuppliersPage() {
       </PageSection>
 
       {creating && (
-        <Modal title="New supplier" onClose={() => setCreating(false)} maxWidthClassName="max-w-md">
+        <Modal title={`New ${singular}`} onClose={() => setCreating(false)} maxWidthClassName="max-w-md">
           {error && <Alert className="mb-4">{error}</Alert>}
           {/* Only the legal name: everything else on the record belongs to the onboarding
               form, and asking for it twice is how the two copies start to disagree. */}
@@ -227,7 +238,7 @@ export default function SuppliersPage() {
               id="legalName"
               autoFocus
               required
-              placeholder="e.g. Sunrise Exports Private Limited"
+              placeholder={placeholder}
               value={legalName}
               onChange={(e) => setLegalName(e.target.value)}
             />

@@ -18,13 +18,14 @@ export const changePassword = ({ currentPassword, newPassword }) =>
 // adding a field is a backend change and no frontend release.
 // ---------------------------------------------------------------------------
 
-export const getFormSpec = (kind = 'supplier') => http.get(`/onboarding/spec?kind=${kind}`)
+export const getFormSpec = (kind) => http.get(`/onboarding/spec?kind=${kind}`)
 
 // ---------------------------------------------------------------------------
-// Partners (suppliers and buyers are the same table; `kind` is a column)
+// Partners (every kind is the same table; `kind` is a column). `kind` is required on all
+// three: a default here would silently hand a future caller somebody else's records.
 // ---------------------------------------------------------------------------
 
-export function getPartners({ kind = 'supplier', status, q } = {}) {
+export function getPartners({ kind, status, q } = {}) {
   const params = new URLSearchParams({ kind })
   if (status && status !== 'all') params.set('status', status)
   if (q) params.set('q', q)
@@ -33,7 +34,7 @@ export function getPartners({ kind = 'supplier', status, q } = {}) {
 
 export const getPartner = (id) => http.get(`/partners/${id}`)
 
-export const createPartner = ({ kind = 'supplier', legalName }) => http.post('/partners', { kind, legalName })
+export const createPartner = ({ kind, legalName }) => http.post('/partners', { kind, legalName })
 
 // Both PATCHes replace the named sections whole — the editors hand over complete section
 // objects, so a field-level merge would be a second, weaker definition of a section.
