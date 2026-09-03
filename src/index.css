@@ -1,9 +1,19 @@
 @import "tailwindcss";
 
+/* `dark:` keys off the .dark class, not the OS. Without this line v4 defaults it to
+   prefers-color-scheme, so the handful of dark: utilities below would follow the system
+   while everything else follows the toggle — the two would disagree the moment anyone
+   overrides their OS setting. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* Deep ocean blue — a trading company's paperwork is read for hours at a time, so the
    ramp is desaturated on purpose: 600/700 carry every button and link, 50/100 tint rows
    and nav state, and nothing in between needs to shout. */
 @theme {
+  /* Panels, cards, inputs, the main pane — everything that sits ON the page background.
+     A token rather than a literal `white` so it can stop being white; see html.dark. */
+  --color-surface: #ffffff;
+
   --color-brand-50: #eef6fb;
   --color-brand-100: #d6e9f5;
   --color-brand-200: #b0d2ea;
@@ -27,6 +37,84 @@
   --color-ink-900: #1f242b;
 
   --font-sans: "Inter", ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* DARK MODE — a value swap, not a second stylesheet.
+ *
+ * Every colour in this app is already a semantic token (`ink` = neutral ramp, `brand` =
+ * blue ramp, `surface` = panel) and Tailwind v4 compiles `bg-ink-100` to
+ * `background-color: var(--color-ink-100)`. So redefining the variables here re-themes all
+ * twenty component files without touching one of them, and a new component gets dark mode
+ * for free as long as it uses the tokens.
+ *
+ * `html.dark` rather than `.dark` on purpose: Tailwind emits the theme defaults on :root,
+ * which has the same specificity as .dark, and the winner would then depend on which rule
+ * the bundler happened to emit last. The extra element beats :root outright.
+ *
+ * The ink ramp is NOT arithmetically inverted — inverted hex reads muddy. It is rebuilt so
+ * the SEMANTICS hold: 50 is still "furthest back", 900 still "most prominent text". Which
+ * is why `bg-ink-50` is the page and `text-ink-900` is a heading in both themes.
+ *
+ * Elevation reverses, though, and that ordering is load-bearing: in light, a panel is
+ * lighter than the page and hover goes darker; in dark, a panel is LIGHTER than the page
+ * and hover goes lighter still. Hence 50 < surface < 100 below — get that ordering wrong
+ * and `hover:bg-ink-100` on a panel becomes invisible.
+ */
+html.dark {
+  /* Native widgets — scrollbars, the date picker, select popups, spinner arrows — are
+     drawn by the OS and ignore CSS entirely. This one line is what stops the form's date
+     and number inputs from being white rectangles on a dark page. */
+  color-scheme: dark;
+
+  --color-surface: #1a1f27;
+
+  --color-ink-50: #12161c;
+  --color-ink-100: #232a34;
+  --color-ink-200: #2f3843;
+  --color-ink-300: #3f4a57;
+  --color-ink-400: #7b8693;
+  --color-ink-500: #97a1ae;
+  --color-ink-600: #b0b9c4;
+  --color-ink-700: #c8cfd8;
+  --color-ink-800: #e0e5ea;
+  --color-ink-900: #f3f6f9;
+
+  /* Tints (50-300) darken, text/graphic steps (400-900) lighten. 600 carries the spinner
+     and the rail's "section complete" dot, so it has to read as a bright accent here —
+     which is why .btn-gradient-primary re-pins its own background below instead of
+     following 600 into the light end. */
+  --color-brand-50: #132a3d;
+  --color-brand-100: #193a52;
+  --color-brand-200: #215270;
+  --color-brand-300: #2f6d92;
+  --color-brand-400: #6fb3e6;
+  --color-brand-500: #7fbdea;
+  --color-brand-600: #93c8f0;
+  --color-brand-700: #a9d3f4;
+  --color-brand-800: #c3e0f8;
+  --color-brand-900: #dcecfb;
+
+  /* Status chips are `bg-*-100 text-*-700`, so the tint goes dark and the text goes light.
+     The whole red ramp can move because the danger BUTTON no longer draws from it — it has
+     its own .btn-danger below, for the same reason .btn-gradient-primary exists. Leaving
+     red-600 dark so that button could use it made the under-field error message 3.37:1 on
+     a dark panel, which is the one place on this form legibility is not negotiable. */
+  --color-red-50: #2c1416;
+  --color-red-100: #3d1b1e;
+  --color-red-200: #522427;
+  --color-red-300: #7f3034;
+  --color-red-600: #f87171;
+  --color-red-700: #fca5a5;
+  --color-red-800: #fecaca;
+
+  --color-green-50: #0f2418;
+  --color-green-100: #14321f;
+  --color-green-200: #1d4a2e;
+  --color-green-700: #86efac;
+  --color-green-800: #bbf7d0;
+
+  --color-amber-100: #3a2a10;
+  --color-amber-800: #fcd34d;
 }
 
 html,
@@ -62,25 +150,25 @@ body {
 /* Solid panel utilities (the `glass-` names are inherited from the house style; nothing
    here is actually translucent, and making it so would cost legibility over a table). */
 .glass-panel {
-  background: white;
+  background: var(--color-surface);
   border: 1px solid var(--color-ink-200);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
 }
 
 .glass-panel-strong {
-  background: white;
+  background: var(--color-surface);
   border: 1px solid var(--color-ink-200);
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
 }
 
 .glass-sidebar {
-  background: white;
+  background: var(--color-surface);
   border: 1px solid var(--color-ink-200);
   box-shadow: 0 4px 24px -10px rgba(15, 23, 42, 0.1);
 }
 
 .app-main-panel {
-  background: white;
+  background: var(--color-surface);
   border: 1px solid var(--color-ink-200);
   box-shadow:
     0 2px 4px rgba(15, 23, 42, 0.04),
@@ -92,7 +180,7 @@ body {
 }
 
 .glass-input {
-  background: white;
+  background: var(--color-surface);
   border: 1px solid var(--color-ink-200);
 }
 
@@ -127,7 +215,7 @@ body {
   select.glass-input::picker(select) {
     border: 1px solid var(--color-ink-200);
     border-radius: 0.75rem;
-    background: white;
+    background: var(--color-surface);
     padding: 0.25rem;
     box-shadow: 0 10px 30px rgb(31 36 43 / 12%);
   }
@@ -171,6 +259,58 @@ body {
   background: var(--color-brand-700);
 }
 
+/* The primary button is the one place the brand ramp cannot simply be followed: it carries
+   `text-white`, and 600/700 are bright accents in dark mode. It takes the ramp's dark end
+   instead — white on brand-300 is 5.7:1, on brand-200 7.7:1. */
+html.dark .btn-gradient-primary {
+  background: var(--color-brand-300);
+}
+
+html.dark .btn-gradient-primary:hover {
+  background: var(--color-brand-200);
+}
+
+/* Same problem as the primary button, same solution: it carries `text-white`, so it needs a
+   red that stays DARK in dark mode — while `text-red-600` (every "this field is required"
+   message) needs one that goes light. One step cannot be both, and the error message is the
+   one that has to win, so the button takes its colour from here instead of from the ramp. */
+.btn-danger {
+  background: var(--color-red-600);
+}
+
+.btn-danger:hover {
+  background: var(--color-red-700);
+}
+
+html.dark .btn-danger {
+  background: #a01c1c;
+}
+
+html.dark .btn-danger:hover {
+  background: #b52222;
+}
+
+/* Shadows are a dark navy, which is invisible against a dark page — the panels would lose
+   their edge and the sidebar would flatten into the background. Same geometry, near-black
+   and heavier. */
+html.dark .glass-panel {
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.4);
+}
+
+html.dark .glass-panel-strong {
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.45);
+}
+
+html.dark .glass-sidebar {
+  box-shadow: 0 4px 24px -10px rgb(0 0 0 / 0.6);
+}
+
+html.dark .app-main-panel {
+  box-shadow:
+    0 2px 4px rgb(0 0 0 / 0.35),
+    0 12px 40px -12px rgb(0 0 0 / 0.55);
+}
+
 .toast-success {
   background: #dcfce7;
   border-color: #86efac;
@@ -183,30 +323,28 @@ body {
   color: #991b1b;
 }
 
+/* Tokens, so this one needs no dark variant at all — it follows the swap like everything
+   else. Only success and error below need real overrides, because "worked" and "failed"
+   have to stay green and red whatever the brand ramp is doing. */
 .toast-info {
-  background: #ffffff;
+  background: var(--color-surface);
   border-color: var(--color-ink-200);
   color: var(--color-ink-700);
 }
 
-@media (prefers-color-scheme: dark) {
-  .toast-success {
-    background: #14532d;
-    border-color: #15803d;
-    color: #dcfce7;
-  }
+/* Was @media (prefers-color-scheme: dark), which meant these three followed the OS while
+   the rest of the app stayed light — a dark toast over a white page for anyone whose laptop
+   was in dark mode. Now they follow the same class as everything else. */
+html.dark .toast-success {
+  background: #14532d;
+  border-color: #15803d;
+  color: #dcfce7;
+}
 
-  .toast-error {
-    background: #450a0a;
-    border-color: #991b1b;
-    color: #fecaca;
-  }
-
-  .toast-info {
-    background: var(--color-ink-800);
-    border-color: var(--color-ink-600);
-    color: var(--color-ink-100);
-  }
+html.dark .toast-error {
+  background: #450a0a;
+  border-color: #991b1b;
+  color: #fecaca;
 }
 
 @media (prefers-reduced-motion: reduce) {

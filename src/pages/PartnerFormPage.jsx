@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import * as api from '../services/api'
 import { useAuth } from '../context/AuthContext'
@@ -46,6 +46,7 @@ export default function PartnerFormPage({ kind }) {
   const toast = useToast()
   const confirm = useConfirm()
 
+  const headerRef = useRef(null)
   const [spec, setSpec] = useState(null)
   const [partner, setPartner] = useState(null)
   const [sections, setSections] = useState(null)
@@ -140,6 +141,41 @@ export default function PartnerFormPage({ kind }) {
     () => gatedSections.filter((section) => !section.permission || can(section.permission)),
     [gatedSections, can],
   )
+
+  // Joined into one string on purpose: `visibleSections` is a new array on every keystroke
+  // (it derives from live form state through the gates), and the scroll effect below must
+  // re-subscribe only when the set of sections actually changes.
+  const railIds = useMemo(() => visibleSections.map((section) => section.id).join(','), [visibleSections])
+
+  // Scroll spy for the rail: the section the reader is looking at is the first one whose
+  // bottom is still below the sticky header. Measured off the header's own box rather than
+  // a magic offset — it grows a row when the action buttons wrap on a narrow screen.
+  //
+  // A scroll listener rather than IntersectionObserver: a collapsed section is one ~57px
+  // row, so several sit inside any sensible observer band at once and choosing between them
+  // is this same rect comparison anyway — plus re-observing the element set every time a
+  // gate toggles. Bounded work, and `find` stops at the active section rather than
+  // measuring all 18.
+  useEffect(() => {
+    const scroller = document.querySelector('[data-app-scroll]')
+    if (!scroller || !railIds) return undefined
+    const ids = railIds.split(',')
+
+    const onScroll = () => {
+      const line = headerRef.current?.getBoundingClientRect().bottom ?? 0
+      const current = ids.find((id) => {
+        const el = document.getElementById(anchorFor(id))
+        return el && el.getBoundingClientRect().bottom > line
+      })
+      // Nothing left below the line means the last section's end has gone past it too —
+      // the reader is at the foot of the form, which is still that section.
+      setActiveId(current ?? ids[ids.length - 1])
+    }
+
+    onScroll()
+    scroller.addEventListener('scroll', onScroll, { passive: true })
+    return () => scroller.removeEventListener('scroll', onScroll)
+  }, [railIds])
 
   const fills = useMemo(() => {
     if (!sections) return {}
@@ -295,8 +331,9 @@ export default function PartnerFormPage({ kind }) {
 
   return (
     <PageMotion>
-      {/* top-0: the scrollport is the app pane, and offsets are measured from it. */}
-      <div className="sticky top-0 z-20 -mx-4 mb-4 border-b border-ink-100 bg-white px-4 py-3 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+      {/* top-0: the scrollport is the app pane, and offsets are measured from it. The ref
+          is the scroll spy's reference line — see the effect above. */}
+      <div ref={headerRef} className="sticky top-0 z-20 -mx-4 mb-4 border-b border-ink-100 bg-surface px-4 py-3 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
             <h1 className="truncate text-xl font-medium text-ink-900">{partner.legalName || `Untitled ${KINDS[kind].label}`}</h1>

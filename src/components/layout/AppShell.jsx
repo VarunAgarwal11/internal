@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { routeTransition } from '../../utils/motion'
 import { useAuth } from '../../context/AuthContext'
+import { useTheme } from '../../hooks/useTheme'
 import { KINDS } from '../../config/kinds'
 
 // The whole of this app's navigation, in one list. Each entry names the permission that
@@ -74,6 +75,22 @@ const ICONS = {
       strokeLinejoin="round"
     />
   ),
+  sun: (
+    <path
+      d="M10 13.2a3.2 3.2 0 100-6.4 3.2 3.2 0 000 6.4zM10 2v1.6M10 16.4V18M18 10h-1.6M3.6 10H2M15.7 4.3l-1.1 1.1M5.4 14.6l-1.1 1.1M15.7 15.7l-1.1-1.1M5.4 5.4L4.3 4.3"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  ),
+  moon: (
+    <path
+      d="M16.5 11.8A6.8 6.8 0 018.2 3.5a6.8 6.8 0 108.3 8.3z"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  ),
 }
 
 function NavIcon({ name }) {
@@ -81,6 +98,25 @@ function NavIcon({ name }) {
     <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" className="h-5 w-5 shrink-0">
       {ICONS[name]}
     </svg>
+  )
+}
+
+// Shows the theme you would switch TO, which is the convention people already read: a moon
+// means "go dark". The label says it in words for anyone who does not read the glyph that
+// way, and aria-pressed is what actually announces the current state.
+function ThemeToggle({ theme, onToggle }) {
+  const goingDark = theme === 'light'
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={theme === 'dark'}
+      aria-label={goingDark ? 'Switch to dark theme' : 'Switch to light theme'}
+      title={goingDark ? 'Switch to dark theme' : 'Switch to light theme'}
+      className="cursor-pointer rounded-full p-2 text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-800"
+    >
+      <NavIcon name={goingDark ? 'moon' : 'sun'} />
+    </button>
   )
 }
 
@@ -149,7 +185,9 @@ function UserMenu({ user, logout }) {
         aria-haspopup="menu"
         className="flex cursor-pointer items-center gap-2 rounded-full py-1 pl-1 pr-3 transition-colors hover:bg-ink-100"
       >
-        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-600 text-sm font-semibold text-white">
+        {/* brand-600 is a bright accent in dark mode, so white on it would vanish — the
+            initial takes the ramp's dark end there instead (8:1). */}
+        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-600 text-sm font-semibold text-white dark:text-brand-50">
           {initial}
         </span>
         <span className="hidden text-sm font-medium text-ink-800 sm:block">{user?.fullName}</span>
@@ -190,6 +228,7 @@ function UserMenu({ user, logout }) {
 export default function AppShell() {
   const { user, can, logout } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [theme, toggleTheme] = useTheme()
   const location = useLocation()
   const navItems = NAV_ITEMS.filter((item) => can(item.permission))
 
@@ -209,19 +248,22 @@ export default function AppShell() {
     // dvh (not vh) so a phone's collapsing address bar can't clip the bottom.
     <div className="app-ambient-bg flex h-dvh flex-col overflow-hidden md:flex-row md:gap-4 md:p-4">
       {/* Mobile top bar */}
-      <div className="fixed inset-x-0 top-0 z-50 flex h-14 items-center justify-between border-b border-ink-200 bg-white px-4 md:hidden">
+      <div className="fixed inset-x-0 top-0 z-50 flex h-14 items-center justify-between border-b border-ink-200 bg-surface px-4 md:hidden">
         <Wordmark className="text-base" />
-        <button
-          type="button"
-          onClick={() => setMobileOpen((v) => !v)}
-          aria-label="Toggle navigation"
-          aria-expanded={mobileOpen}
-          className="cursor-pointer rounded-lg p-2 text-ink-600 hover:bg-ink-100"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-6 w-6">
-            <path d="M4 6h16M4 12h16M4 18h16" strokeWidth="1.8" strokeLinecap="round" />
-          </svg>
-        </button>
+        <div className="flex items-center gap-1">
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
+          <button
+            type="button"
+            onClick={() => setMobileOpen((v) => !v)}
+            aria-label="Toggle navigation"
+            aria-expanded={mobileOpen}
+            className="cursor-pointer rounded-lg p-2 text-ink-600 hover:bg-ink-100"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-6 w-6">
+              <path d="M4 6h16M4 12h16M4 18h16" strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Desktop sidebar — fixed height, does not scroll with main content */}
@@ -242,7 +284,7 @@ export default function AppShell() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-40 bg-ink-900/40 md:hidden"
+              className="fixed inset-0 z-40 bg-black/50 md:hidden"
               onClick={() => setMobileOpen(false)}
             />
             <motion.aside
@@ -273,11 +315,12 @@ export default function AppShell() {
       </AnimatePresence>
 
       <main className="app-main-panel flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-2xl pt-14 md:min-h-[calc(100vh-2rem)] md:pt-0">
-        <div className="hidden shrink-0 items-center justify-end gap-3 border-b border-ink-200 bg-white px-6 py-2.5 md:flex">
+        <div className="hidden shrink-0 items-center justify-end gap-2 border-b border-ink-200 bg-surface px-6 py-2.5 md:flex">
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
           <UserMenu user={user} logout={logout} />
         </div>
 
-        <div data-app-scroll className="min-h-0 flex-1 overflow-y-auto scroll-smooth bg-white">
+        <div data-app-scroll className="min-h-0 flex-1 overflow-y-auto scroll-smooth bg-surface">
           <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
             <AnimatePresence mode="wait">
               <motion.div key={location.pathname} {...routeTransition}>

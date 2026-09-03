@@ -125,7 +125,7 @@ export default function GroupRepeater({
           return (
             <div
               key={row.id}
-              className={`rounded-2xl border bg-white ${hasError ? 'border-red-300' : 'border-ink-200'}`}
+              className={`rounded-2xl border bg-surface ${hasError ? 'border-red-300' : 'border-ink-200'}`}
             >
               <div className="flex items-center gap-1 px-3 py-2.5">
                 <button

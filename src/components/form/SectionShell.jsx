@@ -19,8 +19,11 @@ export default function SectionShell({
   errorCount = 0,
   children,
 }) {
+  // scroll-mt-28 clears the form page's sticky header (the same 7rem its rail is pinned at).
+  // At scroll-mt-4 a section scrolled to from the rail landed UNDER that header, so its own
+  // title was the one thing you could not see after clicking it.
   return (
-    <section id={anchorId} className="scroll-mt-4 rounded-2xl border border-ink-200 bg-white shadow-sm">
+    <section id={anchorId} className="scroll-mt-28 rounded-2xl border border-ink-200 bg-surface shadow-sm">
       <button
         type="button"
         onClick={onToggle}

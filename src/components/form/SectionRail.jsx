@@ -32,7 +32,10 @@ export default function SectionRail({ sections, fills, errorCounts, activeId, on
                 onClick={() => onSelect(section.id)}
                 aria-current={active ? 'true' : undefined}
                 className={`flex w-full cursor-pointer items-center gap-2 whitespace-nowrap rounded-full px-3 py-2 text-left text-sm transition-colors md:whitespace-normal md:rounded-xl ${
-                  active ? 'bg-brand-50 text-ink-900' : 'text-ink-600 hover:bg-ink-100'
+                  // brand-100 rather than 50: at 50 the active row was a tint you had to
+                  // look for, and with the rail now tracking the scroll it is read at a
+                  // glance or not at all.
+                  active ? 'bg-brand-100 font-medium text-ink-900' : 'text-ink-600 hover:bg-ink-100'
                 }`}
               >
                 <span className={`shrink-0 text-xs ${dot.className}`} aria-hidden="true">

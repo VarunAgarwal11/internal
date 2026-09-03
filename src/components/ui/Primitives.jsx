@@ -5,7 +5,7 @@ import { fadeUpItem } from '../../utils/motion'
 export function Card({ children, className = '', style, variant = 'solid' }) {
   const variantClass =
     variant === 'solid'
-      ? 'rounded-xl border border-ink-200 bg-white shadow-sm'
+      ? 'rounded-xl border border-ink-200 bg-surface shadow-sm'
       : variant === 'strong'
         ? 'glass-panel-strong rounded-xl'
         : 'glass-panel rounded-xl'
@@ -40,9 +40,11 @@ export function PageHeader({ title, subtitle, backTo, backLabel = 'Back', action
 
 const BUTTON_VARIANTS = {
   primary: 'btn-gradient-primary text-white focus-visible:outline-brand-600',
-  secondary: 'border border-ink-200 bg-white text-ink-700 hover:bg-ink-50',
+  secondary: 'border border-ink-200 bg-surface text-ink-700 hover:bg-ink-50',
   ghost: 'text-ink-600 hover:bg-ink-100',
-  danger: 'bg-red-600 text-white hover:bg-red-700',
+  // A utility rather than bg-red-600/700, like the primary above: those two steps are error
+  // TEXT in dark mode and would leave a pale pink button under white text. See index.css.
+  danger: 'btn-danger text-white',
 }
 
 export function Button({ variant = 'primary', className = '', as: As = 'button', ...props }) {
@@ -78,7 +80,7 @@ export function LoadingState({ label = 'Loading…' }) {
 
 export function EmptyState({ title, description, icon }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-ink-200 bg-white px-6 py-14 text-center">
+    <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-ink-200 bg-surface px-6 py-14 text-center">
       {icon}
       <p className="text-base font-medium text-ink-800">{title}</p>
       {description && <p className="max-w-sm text-sm text-ink-500">{description}</p>}

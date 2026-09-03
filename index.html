@@ -10,6 +10,22 @@
       href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700&display=swap"
       rel="stylesheet"
     />
+    <script>
+      // Runs before the first paint, and before React exists, on purpose: applying this
+      // class from a component means the browser paints the light theme first and then
+      // repaints dark, and that flash is more objectionable than having no dark mode.
+      // Blocking and inline for the same reason — a deferred or external script is too late.
+      //
+      // Stored choice wins; with none, follow the OS. useTheme reads the result back off
+      // the class rather than repeating this.
+      try {
+        var stored = localStorage.getItem('mavio-theme')
+        var dark = stored ? stored === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches
+        document.documentElement.classList.toggle('dark', dark)
+      } catch (e) {
+        // localStorage throws outright in some privacy modes — light theme, no crash.
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

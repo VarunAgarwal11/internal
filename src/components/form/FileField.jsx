@@ -77,7 +77,7 @@ export default function FileField({ field, documents, partnerId, onUpload, onRem
           {docs.map((doc) => (
             <li
               key={doc.id}
-              className="flex items-center justify-between gap-3 rounded-xl border border-ink-200 bg-white px-3 py-2 text-sm"
+              className="flex items-center justify-between gap-3 rounded-xl border border-ink-200 bg-surface px-3 py-2 text-sm"
             >
               {/* A plain <a>, never a fetch + blob URL: a same-origin navigation carries
                   the httpOnly session cookie, which a fetch would have to re-authorise and

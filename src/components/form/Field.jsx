@@ -1,5 +1,6 @@
 import FileField from './FileField'
 import GroupRepeater from './GroupRepeater'
+import PhoneField from './PhoneField'
 import { Input, Label, Select, Textarea } from '../ui/Primitives'
 import { fieldDomId } from '../../utils/fieldId'
 
@@ -31,6 +32,9 @@ export default function Field({
   onUpload,
   onRemoveFile,
   disabled,
+  // multiselect only: { [option]: { field, value, onChange } } for a gated field that
+  // belongs beside that option rather than as its own row — see SectionForm.
+  inline,
 }) {
   // A repeating group owns its whole block — heading, cards, add button — because a list
   // of 19-field cards is not "a control with a label above it".
@@ -158,20 +162,46 @@ export default function Field({
         const selected = Array.isArray(value) ? value : []
         return (
           <div className="grid gap-2 sm:grid-cols-2">
-            {(field.options || []).map((option) => (
-              <label key={option} className="flex cursor-pointer items-center gap-2 text-sm text-ink-700">
-                <input
-                  type="checkbox"
-                  disabled={disabled}
-                  checked={selected.includes(option)}
-                  onChange={(e) =>
-                    onChange(e.target.checked ? [...selected, option] : selected.filter((o) => o !== option))
-                  }
-                  className="h-4 w-4 shrink-0 cursor-pointer rounded border-ink-300 accent-brand-600"
-                />
-                {option}
-              </label>
-            ))}
+            {(field.options || []).map((option) => {
+              // Present only once the gate is satisfied — visibleSpec already dropped it
+              // from `fields` otherwise, so there is no "checked but blank hidden" state.
+              const companion = inline?.[option]
+              return (
+                <div key={option} className="flex items-center gap-2">
+                  <label className="flex cursor-pointer items-center gap-2 text-sm text-ink-700">
+                    <input
+                      type="checkbox"
+                      disabled={disabled}
+                      checked={selected.includes(option)}
+                      onChange={(e) =>
+                        onChange(e.target.checked ? [...selected, option] : selected.filter((o) => o !== option))
+                      }
+                      className="h-4 w-4 shrink-0 cursor-pointer rounded border-ink-300 accent-brand-600"
+                    />
+                    {option}
+                  </label>
+                  {companion && (
+                    <input
+                      type={companion.field.type === 'number' ? 'number' : 'text'}
+                      // A blank quantity beside a checked option is "how much", never
+                      // zero or negative — min blocks the spinner arrows from going there;
+                      // the server is still the real validator, same as every other field.
+                      min={companion.field.type === 'number' ? 1 : undefined}
+                      disabled={disabled}
+                      value={companion.value ?? ''}
+                      onChange={(e) => {
+                        const raw = e.target.value
+                        companion.onChange(
+                          companion.field.type === 'number' ? (raw === '' ? null : Number(raw)) : raw,
+                        )
+                      }}
+                      aria-label={companion.field.label}
+                      className="w-20 rounded-md border border-ink-300 px-2 py-1 text-sm"
+                    />
+                  )}
+                </div>
+              )
+            })}
           </div>
         )
       }
@@ -191,8 +221,23 @@ export default function Field({
           />
         )
 
-      case 'email':
       case 'tel':
+        // Country picker + E.164, rather than a free-text box that accepts "98765 43210",
+        // "+91-9876543210" and "0091 98765 43210" as three different strings for one
+        // number. See PhoneField.
+        return (
+          <PhoneField
+            id={domId}
+            value={value}
+            onChange={onChange}
+            disabled={disabled}
+            required={field.required}
+            invalid={Boolean(error)}
+            describedBy={describedBy}
+          />
+        )
+
+      case 'email':
       case 'url':
         // The matching native type, for the browser's own check and — the reason that
         // actually matters on a phone — the right on-screen keyboard.

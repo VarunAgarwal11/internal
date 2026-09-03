@@ -54,7 +54,7 @@ export default function Modal({
   }, [])
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none bg-ink-900/40 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none bg-black/50 p-4">
       {dismissible && (
         <button
           type="button"
@@ -67,7 +67,7 @@ export default function Modal({
         role="dialog"
         aria-modal="true"
         aria-label={title || ariaLabel || 'Dialog'}
-        className={`relative max-h-[90vh] w-full overflow-y-auto rounded-3xl border border-ink-200 bg-white p-6 shadow-lg sm:p-7 ${maxWidthClassName} ${panelClassName}`}
+        className={`relative max-h-[90vh] w-full overflow-y-auto rounded-3xl border border-ink-200 bg-surface p-6 shadow-lg sm:p-7 ${maxWidthClassName} ${panelClassName}`}
       >
         {(title || dismissible) && (
           <div className={`mb-4 flex items-start ${title ? 'justify-between gap-3' : 'justify-end'}`}>
