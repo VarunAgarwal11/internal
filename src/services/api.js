@@ -73,6 +73,30 @@ export const deleteDocument = (partnerId, docId) => http.del(`/partners/${partne
 export const documentUrl = (partnerId, docId) => `${http.BASE_URL}/partners/${partnerId}/documents/${docId}/file`
 
 // ---------------------------------------------------------------------------
+// Partner review — the partner checks their own filled form from a mailed link.
+// Two halves with two different authorities: /partners/{id}/review is the staff
+// side on the session cookie, /review/{token} is the partner side where the
+// token IN THE PATH is the whole credential, which is why it takes no id and
+// why the two PDFs are two functions rather than one with a flag.
+// ---------------------------------------------------------------------------
+
+// No recipient in the body, ever: the server mails the address on the record. A
+// recipient parameter here would make this "mail a partner's entire form, and its
+// attachments, to any address I can type".
+export const sendReviewRequest = (partnerId, note) => http.post(`/partners/${partnerId}/review`, { note })
+
+// <a href>, not fetched — same cookie-on-navigation reason as documentUrl above.
+export const partnerPdfUrl = (partnerId) => `${http.BASE_URL}/partners/${partnerId}/review/pdf`
+
+// Encoded because this one path segment is whatever the partner pasted into the URL
+// bar, not an id this app minted. Unknown, expired and superseded all come back as a
+// 404 with code 'invalid_link' — indistinguishable on purpose.
+export const getReview = (token) => http.get(`/review/${encodeURIComponent(token)}`)
+export const respondToReview = (token, { response, comment }) =>
+  http.post(`/review/${encodeURIComponent(token)}`, { response, comment })
+export const reviewPdfUrl = (token) => `${http.BASE_URL}/review/${encodeURIComponent(token)}/pdf`
+
+// ---------------------------------------------------------------------------
 // Permissions & roles — the catalog is server-owned. See AuthContext's `can`.
 // ---------------------------------------------------------------------------
 

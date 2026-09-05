@@ -147,6 +147,91 @@ body {
   scrollbar-width: thin;
 }
 
+/* iOS Safari zooms the whole page in the moment a control under 16px takes focus, and it
+   never zooms back out — on a 150-field form that is one manual pinch per field, and the
+   sticky header ends up off the side of the screen for the rest of the session.
+ *
+ * An element rule rather than `text-base sm:text-sm` on each control, because the ones
+ * that carry their OWN smaller size are exactly the ones that would be missed: the role
+ * picker in the users table (text-xs), the quantity box beside a multiselect option, and
+ * react-phone-number-input's inner <input>, which this app does not render itself.
+ *
+ * Unlayered, which is what makes it win: Tailwind v4 emits every utility inside
+ * `@layer utilities`, and an unlayered declaration beats any layered one whatever the
+ * specificity — so `.text-sm` on the element does not need out-specifying here.
+ *
+ * Checkboxes and radios are excluded: they are sized by h-4/w-4, and a font-size on them
+ * only changes the box the browser draws. */
+@media (width < 40rem) {
+  input:not([type='checkbox'], [type='radio']),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+/* In a pane narrower than 40rem a list table becomes one card per row: the header row is
+   dropped and each cell names its own column from data-label.
+ *
+ * Replaces `min-w-[760px]` + overflow-x-auto, which on a phone left the row's own Delete
+ * button off the right edge of the screen — reachable only by sideways-scrolling a table
+ * whose rows are also the click target for opening the record. The three list pages keep
+ * ONE markup, rather than a second card-shaped copy each that has to stay in agreement
+ * with its own table.
+ *
+ * A CONTAINER query, not a media query, because the viewport is not what runs out of room:
+ * from md up the sidebar takes 16rem of it, so an iPad held portrait renders these tables
+ * into a ~26rem pane and would have gone on scrolling sideways under any `max-sm:` rule.
+ * The wrappers carry Tailwind's `@container`. */
+@container (width < 40rem) {
+  .stack-table,
+  .stack-table tbody,
+  .stack-table tr,
+  .stack-table td {
+    display: block;
+  }
+
+  .stack-table thead {
+    display: none;
+  }
+
+  .stack-table td {
+    padding: 0.25rem 1rem;
+  }
+
+  .stack-table tr {
+    padding: 0.5rem 0;
+  }
+
+  /* Label left, answer right — the shape the missing header row used to give them. Cells
+     with no data-label (the actions column, the "role still in use" alert) stay plain
+     blocks and keep their own alignment. */
+  .stack-table td[data-label] {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .stack-table td[data-label]::before {
+    content: attr(data-label);
+    flex-shrink: 0;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    /* ink-500, the same step the <thead> these replace uses. Not ink-400: that is 2.88:1
+       on a panel — passable for the muted icons it is meant for, not for text. */
+    color: var(--color-ink-500);
+  }
+
+  /* The row actions are xs pills, sized for a dense table. In card form they are the only
+     tap targets on the row, so they get a thumb-sized box instead. */
+  .stack-table td button {
+    padding: 0.5rem 0.875rem;
+    font-size: 0.8125rem;
+  }
+}
+
 /* Solid panel utilities (the `glass-` names are inherited from the house style; nothing
    here is actually translucent, and making it so would cost legibility over a table). */
 .glass-panel {

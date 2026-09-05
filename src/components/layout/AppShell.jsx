@@ -7,15 +7,17 @@ import { useTheme } from '../../hooks/useTheme'
 import { KINDS } from '../../config/kinds'
 
 // The whole of this app's navigation, in one list. Each entry names the permission that
-// reveals it, so a role built in the role editor changes the sidebar with no code change.
-// Exported because HomeRedirect in App.jsx sends you to the first item you can see —
-// the "which page is home" answer has to be derived from the same list, not a second one.
+// reveals it, so a role built in the role editor changes the sidebar with no code change;
+// an entry with no permission is visible to every signed-in user.
 //
 // The partner rows come from KINDS (insertion order), because a kind's path, label,
 // icon and f"{kind}:read" permission are already stated there — a fourth kind is a table
 // entry and a route, never a nav edit. Administration stays literal: two one-off pages
 // with nothing to derive them from.
-export const NAV_ITEMS = [
+// Dashboard is gated on the account role rather than a permission — it is the cross-area
+// overview, so superadmin and admin only. Its tiles are still filtered by `permission`.
+const NAV_ITEMS = [
+  { to: '/dashboard', label: 'Dashboard', icon: 'grid', adminOnly: true },
   ...Object.entries(KINDS).map(([kind, { path, plural, icon }]) => ({
     to: path,
     label: plural,
@@ -26,7 +28,23 @@ export const NAV_ITEMS = [
   { to: '/admin/roles', label: 'Roles', permission: 'role:manage', icon: 'shield' },
 ]
 
+// The sidebar and "/" have to agree on what this user can see, or landing on "/" sends
+// them to a page their own menu does not list.
+export function visibleNavItems({ can, isAdmin }) {
+  return NAV_ITEMS.filter(
+    (item) => (!item.adminOnly || isAdmin) && (!item.permission || can(item.permission))
+  )
+}
+
 const ICONS = {
+  grid: (
+    <path
+      d="M3 3h5.5v5.5H3zM11.5 3H17v5.5h-5.5zM3 11.5h5.5V17H3zM11.5 11.5H17V17h-5.5z"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  ),
   box: (
     <path
       d="M10 2.5l7 3.2v8.6l-7 3.2-7-3.2V5.7l7-3.2zM3 5.7l7 3.2 7-3.2M10 8.9v8.6"
@@ -226,11 +244,11 @@ function UserMenu({ user, logout }) {
 }
 
 export default function AppShell() {
-  const { user, can, logout } = useAuth()
+  const { user, can, isAdmin, logout } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [theme, toggleTheme] = useTheme()
   const location = useLocation()
-  const navItems = NAV_ITEMS.filter((item) => can(item.permission))
+  const navItems = visibleNavItems({ can, isAdmin })
 
   // Closing the drawer from the NavLink's own onClick would miss the browser Back button,
   // which navigates without any click of ours — the router's location IS the external

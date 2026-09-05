@@ -27,7 +27,9 @@ export function PageHeader({ title, subtitle, backTo, backLabel = 'Back', action
           {backLabel}
         </Link>
       )}
-      <div className="flex items-start justify-between gap-3">
+      {/* Stacked on a phone: side by side, `+ New Logistics / CHA partner` is a shrink-0
+          button that squeezes the title into a three-line column beside it. */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-medium text-ink-900">{title}</h1>
           {subtitle && <p className="mt-1 text-sm text-ink-500">{subtitle}</p>}

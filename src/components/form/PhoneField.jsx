@@ -1,17 +1,17 @@
 import PhoneInput from 'react-phone-number-input'
 import flags from 'react-phone-number-input/flags'
-import { getExampleNumber, parsePhoneNumber, parsePhoneNumberFromString } from 'libphonenumber-js/min'
+import { AsYouType, getExampleNumber, parsePhoneNumber, parsePhoneNumberFromString } from 'libphonenumber-js/min'
 import examples from 'libphonenumber-js/examples.mobile.json'
 import 'react-phone-number-input/style.css'
+import { COUNTRIES } from '../../config/countries'
 
 // Ported from KIORA's website/demoportfolio src/components/PhoneField.tsx — same library,
-// same behaviour, same E.164 value shape — with its two-country restriction dropped and the
-// raw-hex CSS replaced by this app's own field styling.
+// same E.164 value shape — with its two-country restriction widened to Mavio's markets and
+// the raw-hex CSS replaced by this app's own field styling.
 //
 // Every `type: "tel"` field in the spec renders through here, which today is `phone` and
-// `whatsapp_number` on all three kinds plus `phone` on the references group. Every country
-// is selectable; India is the default because that is where most of these partners are, and
-// a default is not a restriction — a Dubai supplier picks AE and the field reformats itself.
+// `whatsapp_number` on all three kinds plus `phone` on the references group. India is the
+// default because that is the sourcing side and most partners sit there.
 //
 // The stored value is E.164 ("+919876543210"): one unambiguous string, dialable as-is by the
 // WhatsApp/voice integrations, with the country IN the number rather than in a second column
@@ -41,20 +41,55 @@ function toE164(value) {
   return parsePhoneNumberFromString(value, 'IN')?.number ?? value
 }
 
+// The digits typed AFTER the dialling code: "" for "+352", "621123456" for "+352621123456".
+// Which is the difference between a country picked and a number given — see below, where it
+// is the whole of what makes "not answered" distinguishable from "half typed".
+function nationalDigits(value) {
+  const formatter = new AsYouType()
+  formatter.input(value || '')
+  return formatter.getNationalNumber()
+}
+
 export default function PhoneField({ value, onChange, disabled, id, describedBy, invalid, required }) {
+  // A dialling code with nothing typed after it is NOT an answer, and neither is a stored
+  // value this component cannot render at all. Both rest on defaultCountry instead.
+  //
+  // Without this, "+352" (see onChange) came back as a number libphonenumber cannot resolve,
+  // so `outOfList` below went true, the International entry was added and selected, and the
+  // field settled on a flagless "—" beside a bare Luxembourg dialling code — on a form where
+  // every other empty phone box reads +91. Half-typed values are untouched: one national
+  // digit is enough to keep them, which is what lets this run on a controlled input.
+  const stored = toE164(value)
+  const e164 = stored?.startsWith('+') && nationalDigits(stored) ? stored : null
+  // A number already in the database may belong to a country that is not on the list — saved
+  // before the list existed, or under a market since dropped. With no "International" entry
+  // the library has nothing valid to select, so it falls back to an arbitrary country and
+  // draws that flag over a number it does not belong to (see getPreSelectedCountry). Keeping
+  // the entry open for exactly those values shows the truth; every other value stays boxed
+  // into the list.
+  const outOfList = !!e164 && !COUNTRIES.includes(parsePhoneNumberFromString(e164)?.country)
+
   return (
     <PhoneInput
       id={id}
       international
+      countries={COUNTRIES}
+      addInternationalOption={outOfList}
       // The dial code belongs to the country picker, not the text box: editable, it can be
       // made to disagree with the flag sitting next to it.
       countryCallingCodeEditable={false}
       flags={flags}
       defaultCountry="IN"
-      value={toE164(value) ?? undefined}
+      value={e164 ?? undefined}
       // undefined when cleared; the section JSON stores null for "not answered", which is
       // what _coerce turns "" into anyway.
-      onChange={(next) => onChange(next ?? null)}
+      //
+      // Touching the country picker on an empty field makes the library report "+352" — a
+      // dialling code and no number. Stored, autosave puts that lone code in the record 800 ms
+      // later, and the server takes it: a `tel` is free text there (see sections._coerce), so
+      // nothing downstream rejects it and "WhatsApp number: +352" reaches the PDF the partner
+      // is asked to confirm. Nothing typed is nothing answered, whatever flag is showing.
+      onChange={(next) => onChange(nationalDigits(next) ? next : null)}
       disabled={disabled}
       className="flex items-center gap-2"
       countrySelectComponent={CountrySelect}
@@ -85,8 +120,8 @@ export default function PhoneField({ value, onChange, disabled, id, describedBy,
 
 // A flag + code pill with the real <select> laid over it invisibly, so the OS draws its own
 // native picker (and a phone gets the native wheel) while the trigger looks like the rest of
-// the form. With every country in the list, a native picker is also the only one that stays
-// usable at ~245 options — it gets type-ahead for free.
+// the form. A native picker also gets type-ahead for free, which still earns its keep at 34
+// options once the EU expands.
 function CountrySelect({ value, onChange, options, disabled }) {
   const Flag = value ? flags[value] : null
   return (

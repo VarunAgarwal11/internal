@@ -3,6 +3,7 @@ import Field from './Field'
 import { Button } from '../ui/Primitives'
 import { useConfirm } from '../../context/ConfirmContext'
 import { isFilled } from '../../utils/fill'
+import { clearStaleDependents } from '../../utils/options'
 
 // Duplicated from SectionForm rather than shared: react/only-export-components forbids a
 // second export next to a component, and a one-line Set is cheaper than a module for it.
@@ -24,7 +25,10 @@ function IconButton({ label, onClick, disabled, children }) {
       disabled={disabled}
       aria-label={label}
       title={label}
-      className="inline-flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-700 disabled:cursor-not-allowed disabled:opacity-40"
+      // 28px is a mouse target, not a thumb one, and three of these sit shoulder to
+      // shoulder with a destructive delete on the end. Full size on a phone, dense again
+      // from sm up where the card header has less room to give.
+      className="inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-700 disabled:cursor-not-allowed disabled:opacity-40 sm:h-7 sm:w-7"
     >
       {children}
     </button>
@@ -58,7 +62,10 @@ export default function GroupRepeater({
   // ponytail: "Products" -> "Product". Good enough for every label on this form; if the
   // spec ever grows an irregular plural, add a `singular` key to SpecField.
   const singular = field.label.replace(/s$/, '') || 'Item'
-  const titleField = subFields.find((sub) => (sub.type || 'text') === 'text')
+  // The spec names the field a human recognises the row by. The old "first text field"
+  // rule only held while that field happened to be text — once product_name became a
+  // select, it silently retitled every card by its SKU.
+  const titleField = subFields.find((sub) => sub.title) || subFields.find((sub) => (sub.type || 'text') === 'text')
   const errorKeys = Object.keys(errors || {})
 
   function rowHasError(index) {
@@ -180,8 +187,17 @@ export default function GroupRepeater({
                       path={`${path}[${index}].${sub.key}`}
                       scope={scope}
                       value={row[sub.key]}
+                      // Row-scoped: the category on THIS card narrows this card's product
+                      // menu, and clears its product when it changes. See utils/options.
+                      siblings={row}
                       onChange={(next) =>
-                        onChange(rows.map((entry, position) => (position === index ? { ...entry, [sub.key]: next } : entry)))
+                        onChange(
+                          rows.map((entry, position) =>
+                            position === index
+                              ? clearStaleDependents(subFields, { ...entry, [sub.key]: next })
+                              : entry,
+                          ),
+                        )
                       }
                       errors={errors}
                       documents={documents}

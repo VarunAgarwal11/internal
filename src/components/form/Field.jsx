@@ -3,6 +3,7 @@ import GroupRepeater from './GroupRepeater'
 import PhoneField from './PhoneField'
 import { Input, Label, Select, Textarea } from '../ui/Primitives'
 import { fieldDomId } from '../../utils/fieldId'
+import { fieldOptions } from '../../utils/options'
 
 // THE DISPATCHER — the only file in this app that knows what an input element is.
 // Everything above it deals in spec objects; everything below it is one control.
@@ -35,6 +36,9 @@ export default function Field({
   // multiselect only: { [option]: { field, value, onChange } } for a gated field that
   // belongs beside that option rather than as its own row — see SectionForm.
   inline,
+  // The other answers at this field's own level — the section's for a top-level field, the
+  // row's for one inside a group. Only `optionsBy` reads it; everything else is unchanged.
+  siblings,
 }) {
   // A repeating group owns its whole block — heading, cards, add button — because a list
   // of 19-field cards is not "a control with a label above it".
@@ -139,21 +143,37 @@ export default function Field({
         // Native picker. No date library: the value is already the ISO string the API wants.
         return <Input {...common} type="date" value={value ?? ''} onChange={(e) => onChange(e.target.value)} />
 
-      case 'select':
+      case 'select': {
+        // Narrowed by a sibling's answer when the spec says so — "Category: Spices" leaves
+        // only the spices on the product menu. See utils/options.
+        const options = fieldOptions(field, siblings)
+        const awaitingParent = Boolean(field.optionsBy) && options.length === 0
         return (
-          <Select {...common} value={value ?? ''} onChange={(e) => onChange(e.target.value)}>
+          <Select
+            {...common}
+            // Disabled rather than showing a menu with nothing in it: an empty dropdown
+            // reads as a broken form, whereas a greyed-out one reads as "not yet".
+            disabled={disabled || awaitingParent}
+            value={value ?? ''}
+            onChange={(e) => onChange(e.target.value)}
+          >
             {/* ALWAYS first, and never removable. Without it the browser "chooses" option 1
                 for a field nobody has touched, and the server cannot tell a default apart
                 from an answer. Across 150 fields that is the difference between "not asked
                 yet" and a fabricated answer sitting in a supplier's approved record. */}
-            <option value="">Select…</option>
-            {(field.options || []).map((option) => (
+            {/* Names the field to answer first, from the spec's own key — no field name is
+                written into this file, same rule as everywhere else here. */}
+            <option value="">
+              {awaitingParent ? `Select a ${field.optionsBy.field.replace(/_/g, ' ')} first…` : 'Select…'}
+            </option>
+            {options.map((option) => (
               <option key={option} value={option}>
                 {option}
               </option>
             ))}
           </Select>
         )
+      }
 
       case 'multiselect': {
         // A checkbox grid, not <select multiple>: a ctrl-click list is unusable for data

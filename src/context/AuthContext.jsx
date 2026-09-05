@@ -60,9 +60,14 @@ export function AuthProvider({ children }) {
   // behind it re-checks server-side, because a hidden button is not a closed door.
   const can = useCallback((permission) => Boolean(user?.permissions?.includes(permission)), [user])
 
+  // The account role, not a permission: superadmin and admin already hold every
+  // permission (users.py PRIVILEGED), so no `can` string can tell them apart from a staff
+  // user who was granted the same rights one by one.
+  const isAdmin = user?.role === 'superadmin' || user?.role === 'admin'
+
   const value = useMemo(
-    () => ({ user, bootstrapping, can, login, logout, refresh }),
-    [user, bootstrapping, can, login, logout, refresh]
+    () => ({ user, bootstrapping, can, isAdmin, login, logout, refresh }),
+    [user, bootstrapping, can, isAdmin, login, logout, refresh]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

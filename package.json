@@ -8,7 +8,9 @@
     "build": "vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "check:contrast": "node scripts/check-contrast.mjs"
+    "check:contrast": "node scripts/check-contrast.mjs",
+    "check:countries": "node scripts/check-countries.mjs",
+    "check:options": "node scripts/check-options.mjs"
   },
   "dependencies": {
     "framer-motion": "^13.1.0",

@@ -1,6 +1,7 @@
 import { memo } from 'react'
 import Field from './Field'
 import { Alert } from '../ui/Primitives'
+import { clearStaleDependents } from '../../utils/options'
 
 // Textareas, groups, upload zones and checkbox grids get the full width: a 3-row textarea
 // or a stack of product cards squeezed into half a row is unreadable.
@@ -20,6 +21,10 @@ function SectionForm({
 }) {
   const data = value || {}
 
+  // Every write to this section goes through here, so a narrowed select left holding an
+  // answer its parent no longer allows is cleared once, in one place.
+  const write = (next) => onChange(sectionId, clearStaleDependents(fields, next))
+
   const inlineByHost = {}
   const inlined = new Set()
   for (const field of fields) {
@@ -33,7 +38,7 @@ function SectionForm({
     inlineByHost[host.key][rule.includes] = {
       field,
       value: data[field.key],
-      onChange: (next) => onChange(sectionId, { ...data, [field.key]: next }),
+      onChange: (next) => write({ ...data, [field.key]: next }),
     }
     inlined.add(field.key)
   }
@@ -51,7 +56,8 @@ function SectionForm({
             path={field.key}
             scope={sectionId}
             value={data[field.key]}
-            onChange={(next) => onChange(sectionId, { ...data, [field.key]: next })}
+            siblings={data}
+            onChange={(next) => write({ ...data, [field.key]: next })}
             errors={errors}
             documents={documents}
             partnerId={partnerId}

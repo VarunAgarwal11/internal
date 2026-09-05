@@ -22,8 +22,12 @@ export default function SectionShell({
   // scroll-mt-28 clears the form page's sticky header (the same 7rem its rail is pinned at).
   // At scroll-mt-4 a section scrolled to from the rail landed UNDER that header, so its own
   // title was the one thing you could not see after clicking it.
+  //
+  // Below sm that header is taller, not shorter: its action row wraps to two or three lines
+  // and the section index joins it, putting the bottom edge around 12rem. Over-clearing
+  // only leaves the title sitting a little low; under-clearing hides it again.
   return (
-    <section id={anchorId} className="scroll-mt-28 rounded-2xl border border-ink-200 bg-surface shadow-sm">
+    <section id={anchorId} className="scroll-mt-48 rounded-2xl border border-ink-200 bg-surface shadow-sm sm:scroll-mt-28">
       <button
         type="button"
         onClick={onToggle}

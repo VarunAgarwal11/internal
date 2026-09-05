@@ -6,7 +6,9 @@ import { Card } from '../ui/Primitives'
 // layout: everyone who reaches this screen already works here.
 export default function AuthCard({ title, subtitle, children }) {
   return (
-    <div className="app-ambient-bg flex min-h-screen items-center justify-center px-4 py-12">
+    // dvh so the card centres in what a phone actually shows: at 100vh the browser's own
+    // address bar is counted as usable height, and the card sits below the middle.
+    <div className="app-ambient-bg flex min-h-dvh items-center justify-center px-4 py-12">
       <motion.div {...authEnter} className="w-full max-w-md">
         <p className="mb-6 text-center text-xl font-semibold tracking-tight text-brand-700">
           Mavio Global<span className="ml-2 font-normal text-ink-400">Partner Portal</span>

@@ -67,7 +67,10 @@ export default function Modal({
         role="dialog"
         aria-modal="true"
         aria-label={title || ariaLabel || 'Dialog'}
-        className={`relative max-h-[90vh] w-full overflow-y-auto rounded-3xl border border-ink-200 bg-surface p-6 shadow-lg sm:p-7 ${maxWidthClassName} ${panelClassName}`}
+        // dvh, not vh: with a phone's address bar showing, 90vh is taller than the visible
+        // area, so a long dialog's own footer buttons sat below the fold with nothing to
+        // scroll — the panel had not overflowed as far as the browser was concerned.
+        className={`relative max-h-[90dvh] w-full overflow-y-auto rounded-3xl border border-ink-200 bg-surface p-6 shadow-lg sm:p-7 ${maxWidthClassName} ${panelClassName}`}
       >
         {(title || dismissible) && (
           <div className={`mb-4 flex items-start ${title ? 'justify-between gap-3' : 'justify-end'}`}>

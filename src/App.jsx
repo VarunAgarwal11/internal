@@ -1,23 +1,26 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import ProtectedRoute from './components/layout/ProtectedRoute'
-import AppShell, { NAV_ITEMS } from './components/layout/AppShell'
+import AppShell, { visibleNavItems } from './components/layout/AppShell'
 import { EmptyState } from './components/ui/Primitives'
 import LoginPage from './pages/LoginPage'
 import AccountSuspendedPage from './pages/AccountSuspendedPage'
+import DashboardPage from './pages/DashboardPage'
 import PartnersPage from './pages/PartnersPage'
 import PartnerFormPage from './pages/PartnerFormPage'
+import PartnerReviewPage from './pages/PartnerReviewPage'
 import AdminUsersPage from './pages/AdminUsersPage'
 import AdminRolesPage from './pages/AdminRolesPage'
 import NotFoundPage from './pages/NotFoundPage'
 
-// "/" has no page of its own — it forwards to the first section this user can actually
-// see. Without it a user holding only user:manage lands on /suppliers, is bounced to "/"
-// by its permission guard, and bounces straight back: a redirect loop that looks like a
-// broken app rather than a missing permission.
+// "/" has no page of its own — it forwards to the first sidebar entry this user can
+// actually see (the dashboard for an admin, their first section otherwise). Without it a
+// user holding only user:manage lands on /suppliers, is bounced to "/" by its permission
+// guard, and bounces straight back: a redirect loop that looks like a broken app rather
+// than a missing permission.
 function HomeRedirect() {
-  const { can } = useAuth()
-  const first = NAV_ITEMS.find((item) => can(item.permission))
+  const { can, isAdmin } = useAuth()
+  const first = visibleNavItems({ can, isAdmin })[0]
   if (first) return <Navigate to={first.to} replace />
   return (
     <EmptyState
@@ -34,10 +37,21 @@ export default function App() {
         <Route path="/login" element={<LoginPage />} />
         {/* Public on purpose — behind ProtectedRoute this would redirect-loop. */}
         <Route path="/account-suspended" element={<AccountSuspendedPage />} />
+        {/* The partner's own read-only copy of their form, authorised by the token in the
+            path and nothing else. Outside ProtectedRoute because the reader has no account
+            here and never will — inside it, every link Mavio mails would land on /login. */}
+        <Route path="/review/:token" element={<PartnerReviewPage />} />
 
         <Route element={<ProtectedRoute />}>
           <Route element={<AppShell />}>
             <Route path="/" element={<HomeRedirect />} />
+
+            {/* Role-gated rather than permission-gated: superadmin and admin hold every
+                permission, so only the account role separates them from a staff user with
+                the same grants. Its tiles are still filtered per permission. */}
+            <Route element={<ProtectedRoute adminOnly />}>
+              <Route path="/dashboard" element={<DashboardPage />} />
+            </Route>
 
             {/* Nested ProtectedRoute is the whole of permission routing — there is no
                 separate AdminRoute, and every one of these re-checks server-side.

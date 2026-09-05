@@ -1,10 +1,10 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 
-// One component covers all four cases: the bootstrap flash, unauthenticated,
-// suspended, and missing-permission. No separate AdminRoute.
-export default function ProtectedRoute({ permission }) {
-  const { user, bootstrapping, can } = useAuth()
+// One component covers all five cases: the bootstrap flash, unauthenticated, suspended,
+// missing-permission and admin-only. No separate AdminRoute.
+export default function ProtectedRoute({ permission, adminOnly }) {
+  const { user, bootstrapping, can, isAdmin } = useAuth()
   const location = useLocation()
 
   // Without this the first paint after a hard refresh redirects to /login while
@@ -19,6 +19,9 @@ export default function ProtectedRoute({ permission }) {
   }
   // Cosmetic, like every other `can` call: the route behind this re-checks server-side.
   if (permission && !can(permission)) {
+    return <Navigate to="/" replace />
+  }
+  if (adminOnly && !isAdmin) {
     return <Navigate to="/" replace />
   }
   return <Outlet />

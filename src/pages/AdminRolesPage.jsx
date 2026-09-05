@@ -32,7 +32,9 @@ function PermissionPicker({ catalog, selected, onToggle }) {
               {items.map((permission) => (
                 <label
                   key={permission.id}
-                  className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-ink-700 hover:bg-ink-50"
+                  // Roomier rows on a phone: a 4mm checkbox is the whole target otherwise,
+                  // and the label is what a thumb actually lands on.
+                  className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2.5 text-sm text-ink-700 hover:bg-ink-50 sm:py-1.5"
                 >
                   <input
                     type="checkbox"
@@ -186,8 +188,9 @@ export default function AdminRolesPage() {
           <EmptyState title="No roles yet" description="Create one to start assigning permissions to staff." />
         ) : (
           <Card className="overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[680px] text-left text-sm">
+            {/* One card per row while the pane is under 40rem — see index.css. */}
+            <div className="@container overflow-x-auto">
+              <table className="stack-table w-full text-left text-sm @min-[40rem]:min-w-[680px]">
                 <thead className="border-b border-ink-200 bg-ink-50 text-xs uppercase tracking-wide text-ink-500">
                   <tr>
                     <th className="px-5 py-3 font-medium">Name</th>
@@ -205,12 +208,13 @@ export default function AdminRolesPage() {
                   {roles.map((role) => (
                     <Fragment key={role.id}>
                       <motion.tr variants={listItem} className="hover:bg-ink-50">
+                        {/* No data-label: stacked, this cell is the card's own heading. */}
                         <td className="px-5 py-3">
                           <span className="font-medium text-ink-900">{role.name}</span>
                           {role.description && <p className="text-xs text-ink-400">{role.description}</p>}
                         </td>
-                        <td className="px-5 py-3 text-ink-600">{role.permissions.length}</td>
-                        <td className="px-5 py-3 text-ink-600">{role.userCount}</td>
+                        <td data-label="Permissions" className="px-5 py-3 text-ink-600">{role.permissions.length}</td>
+                        <td data-label="Users" className="px-5 py-3 text-ink-600">{role.userCount}</td>
                         <td className="px-5 py-3 text-right">
                           <div className="flex justify-end gap-2">
                             <Button variant="secondary" className="px-2.5 py-1 text-xs" onClick={() => openEditor(role)}>

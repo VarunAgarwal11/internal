@@ -211,8 +211,9 @@ export default function AdminUsersPage() {
           <EmptyState title="No users match your filters" description="Try a different search term or status." />
         ) : (
           <Card className="overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[860px] text-left text-sm">
+            {/* One card per row while the pane is under 40rem — see index.css. */}
+            <div className="@container overflow-x-auto">
+              <table className="stack-table w-full text-left text-sm @min-[40rem]:min-w-[860px]">
                 <thead className="border-b border-ink-200 bg-ink-50 text-xs uppercase tracking-wide text-ink-500">
                   <tr>
                     <th className="px-5 py-3 font-medium">Name</th>
@@ -231,12 +232,13 @@ export default function AdminUsersPage() {
                 >
                   {users.map((user) => (
                     <motion.tr key={user.id} variants={listItem} className="hover:bg-ink-50">
+                      {/* No data-label: stacked, this cell is the card's own heading. */}
                       <td className="px-5 py-3">
                         <span className="font-medium text-ink-900">{user.fullName}</span>
                         <p className="text-xs text-ink-400">{user.email}</p>
                       </td>
-                      <td className="px-5 py-3 capitalize text-ink-600">{user.role}</td>
-                      <td className="px-5 py-3">
+                      <td data-label="Account" className="px-5 py-3 capitalize text-ink-600">{user.role}</td>
+                      <td data-label="Role" className="px-5 py-3">
                         {user.role === 'staff' ? (
                           <Select
                             value={user.roleId || ''}
@@ -258,10 +260,10 @@ export default function AdminUsersPage() {
                           <span className="text-xs text-ink-400">All permissions</span>
                         )}
                       </td>
-                      <td className="px-5 py-3">
+                      <td data-label="Status" className="px-5 py-3">
                         <UserStatusBadge status={user.status} />
                       </td>
-                      <td className="px-5 py-3 text-ink-600">{formatDate(user.createdAt)}</td>
+                      <td data-label="Added" className="px-5 py-3 text-ink-600">{formatDate(user.createdAt)}</td>
                       <td className="px-5 py-3 text-right">
                         {user.status !== 'deleted' && (
                           <div className="flex justify-end gap-2">

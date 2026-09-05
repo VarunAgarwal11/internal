@@ -12,7 +12,10 @@ const TONE_STYLES = {
 function ToastStack({ toasts, onDismiss }) {
   return (
     <div
-      className="pointer-events-none fixed inset-x-0 top-4 z-[100] flex flex-col items-center gap-2 px-4 sm:items-end sm:pr-6"
+      // top-16 clears AppShell's fixed 3.5rem top bar — at top-4 a toast landed over the
+      // wordmark and the hamburger, which is the control you reach for next. Keyed to md,
+      // the same breakpoint that bar is `md:hidden` at, not to sm like the alignment.
+      className="pointer-events-none fixed inset-x-0 top-16 z-[100] flex flex-col items-center gap-2 px-4 sm:items-end sm:pr-6 md:top-4"
       aria-live="polite"
       aria-relevant="additions removals"
     >

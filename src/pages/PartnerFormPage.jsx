@@ -4,7 +4,7 @@ import * as api from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
-import { Alert, Button, LoadingState, ProgressBar, Textarea } from '../components/ui/Primitives'
+import { Alert, Button, Label, LoadingState, ProgressBar, Textarea } from '../components/ui/Primitives'
 import Modal from '../components/ui/Modal'
 import PageMotion from '../components/ui/PageMotion'
 import { PartnerStatusBadge } from '../components/Badges'
@@ -14,6 +14,7 @@ import SectionShell from '../components/form/SectionShell'
 import { useSectionAutosave } from '../hooks/useSectionAutosave'
 import { fieldDomId } from '../utils/fieldId'
 import { sectionFill } from '../utils/fill'
+import { formatDateTime, timeAgo } from '../utils/format'
 import { visibleSpec } from '../utils/visibility'
 import { KINDS } from '../config/kinds'
 
@@ -33,6 +34,30 @@ function findFileField(spec, sectionId, fieldKey) {
     if (sub) return sub
   }
   return null
+}
+
+// Where the partner's answer to the review link lands, in the same stack as a rejection.
+// Driven off `partner.review` alone, so a resend replaces the banner in place instead of
+// stacking a second one nobody can clear — and so a reload says the same thing.
+function ReviewAlert({ review }) {
+  if (!review) return null
+  if (review.response === 'changes_requested') {
+    return <Alert className="mb-4">Partner asked for changes {timeAgo(review.respondedAt)}: {review.comment}</Alert>
+  }
+  if (review.response === 'confirmed') {
+    return (
+      <Alert tone="success" className="mb-4">
+        {review.sentTo} confirmed these details {timeAgo(review.respondedAt)}.
+      </Alert>
+    )
+  }
+  return (
+    <Alert tone="info" className="mb-4">
+      {review.expired
+        ? `The review link sent to ${review.sentTo} ${timeAgo(review.sentAt)} expired before they replied — resend it to ask again.`
+        : `Sent to ${review.sentTo} ${timeAgo(review.sentAt)}, awaiting their reply. The link works until ${formatDateTime(review.expiresAt)}.`}
+    </Alert>
+  )
 }
 
 // Serves /suppliers/:id, /buyers/:id and /logistics-cha/:id. The renderer underneath (SectionForm,
@@ -58,6 +83,8 @@ export default function PartnerFormPage({ kind }) {
   const [busy, setBusy] = useState(false)
   const [rejecting, setRejecting] = useState(false)
   const [reason, setReason] = useState('')
+  const [reviewing, setReviewing] = useState(false)
+  const [note, setNote] = useState('')
 
   useEffect(() => {
     let active = true
@@ -281,6 +308,32 @@ export default function PartnerFormPage({ kind }) {
     }
   }
 
+  async function handleSendReview() {
+    setBusy(true)
+    try {
+      // Flush FIRST, for a sharper version of handleSubmit's reason: a value typed in the
+      // last 800 ms is still sitting in the debounce, and this posts a PDF of the form to
+      // the partner. Sending one that is missing the staffer's last edit asks them to
+      // confirm a document that never existed — and a failed save must not be papered over
+      // by a mail that says the record is ready.
+      const failed = await flush()
+      if (failed) {
+        toast.error(`Your last change has not saved yet: ${failed.message}`)
+        return
+      }
+      // The recipient is not ours to send — the server mails the address on the record.
+      const updated = await api.sendReviewRequest(partnerId, note.trim() || undefined)
+      setPartner(updated)
+      setReviewing(false)
+      setNote('')
+      toast.success(`Review link sent to ${updated.contactEmail}.`)
+    } catch (err) {
+      toast.error(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function handleApprove() {
     const ok = await confirm({
       title: `Approve this ${KINDS[kind].label}?`,
@@ -328,6 +381,20 @@ export default function PartnerFormPage({ kind }) {
   // kind's spec could disagree with.
   const internalSection = visibleSections.find((section) => section.internal)
   const canDecide = can(internalSection?.permission)
+  // Deliberately NOT `!readOnly`: a submitted record is still worth putting in front of the
+  // partner, and that is exactly when it usually goes. An approved one is not — there is
+  // nothing left for them to ask to change.
+  const canSendReview = can(`${kind}:edit`) && status !== 'approved'
+
+  const sectionRail = (
+    <SectionRail
+      sections={gatedSections}
+      fills={fills}
+      errorCounts={errorCounts}
+      activeId={activeId}
+      onSelect={(sectionId) => expandAndScroll(sectionId, null)}
+    />
+  )
 
   return (
     <PageMotion>
@@ -346,6 +413,21 @@ export default function PartnerFormPage({ kind }) {
             </div>
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-2">
+            {/* Below md the section index rides here beside Submit; from md up this copy is
+                gone entirely and the aside rail takes over. */}
+            <div className="md:hidden">{sectionRail}</div>
+            {canSendReview && (
+              <>
+                {/* A plain <a>: a same-origin navigation carries the httpOnly session
+                    cookie, so the PDF downloads with no token and no blob copy in JS. */}
+                <Button as="a" variant="ghost" href={api.partnerPdfUrl(partnerId)} target="_blank" rel="noreferrer">
+                  Download PDF
+                </Button>
+                <Button variant="secondary" onClick={() => setReviewing(true)} disabled={busy}>
+                  {partner.review?.sentAt ? 'Resend review link' : 'Send for review'}
+                </Button>
+              </>
+            )}
             {!readOnly && (
               <Button
                 onClick={handleSubmit}
@@ -384,6 +466,8 @@ export default function PartnerFormPage({ kind }) {
         <Alert className="mb-4">Sent back for correction: {partner.rejectionReason}</Alert>
       )}
 
+      <ReviewAlert review={partner.review} />
+
       {(partner.warnings || []).map((warning) => (
         <Alert key={warning} tone="info" className="mb-4">
           {warning}
@@ -391,16 +475,8 @@ export default function PartnerFormPage({ kind }) {
       ))}
 
       <div className="flex flex-col gap-4 md:flex-row md:gap-6">
-        <aside className="md:w-60 md:shrink-0">
-          <div className="md:sticky md:top-28">
-            <SectionRail
-              sections={gatedSections}
-              fills={fills}
-              errorCounts={errorCounts}
-              activeId={activeId}
-              onSelect={(sectionId) => expandAndScroll(sectionId, null)}
-            />
-          </div>
+        <aside className="hidden md:block md:w-60 md:shrink-0">
+          <div className="md:sticky md:top-28">{sectionRail}</div>
         </aside>
 
         <div className="min-w-0 flex-1 space-y-4 pb-24">
@@ -435,6 +511,48 @@ export default function PartnerFormPage({ kind }) {
           ))}
         </div>
       </div>
+
+      {reviewing && (
+        <Modal
+          title={partner.review?.sentAt ? 'Resend review link' : 'Send for review'}
+          onClose={() => setReviewing(false)}
+        >
+          <p className="mb-4 text-sm text-ink-600">
+            They get a read-only copy of this form, and the same form as a PDF, and can confirm it or ask for changes.
+            {partner.review?.sentAt && ' Any link already sent stops working.'}
+          </p>
+          {/* Shown, not typed. The server mails the address on the record and ignores
+              anything a body sends, so an input here would be a lie about where this goes —
+              and a way to mail a partner's whole form to an address a staffer invented. */}
+          <Label>Sends to</Label>
+          <p className="rounded-2xl border border-ink-200 bg-ink-50 px-4 py-2.5 text-sm text-ink-900">
+            {partner.contactEmail || 'No contact email on this record'}
+          </p>
+          {!partner.contactEmail && (
+            <p className="mt-1.5 text-sm text-red-600">
+              Fill in the email in Company information first — that is the address this is sent to.
+            </p>
+          )}
+          <Label className="mt-4" htmlFor="review-note">
+            Note (optional)
+          </Label>
+          <Textarea
+            id="review-note"
+            rows={3}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Anything you want them to check first"
+          />
+          <div className="mt-4 flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setReviewing(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSendReview} disabled={busy || !partner.contactEmail}>
+              {busy ? 'Sending…' : 'Send'}
+            </Button>
+          </div>
+        </Modal>
+      )}
 
       {rejecting && (
         <Modal title="Send back for correction" onClose={() => setRejecting(false)}>

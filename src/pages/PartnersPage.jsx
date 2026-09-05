@@ -154,8 +154,11 @@ export default function PartnersPage({ kind }) {
           <EmptyState title={`No ${plural.toLowerCase()} match your filters`} description="Try a different search term or status." />
         ) : (
           <Card className="overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[760px] text-left text-sm">
+            {/* @container: stack-table collapses this to one card per row whenever the
+                PANE is under 40rem — see index.css. The min-width that forces the sideways
+                scroll is keyed to the same pane, not to the viewport. */}
+            <div className="@container overflow-x-auto">
+              <table className="stack-table w-full text-left text-sm @min-[40rem]:min-w-[760px]">
                 <thead className="border-b border-ink-200 bg-ink-50 text-xs uppercase tracking-wide text-ink-500">
                   <tr>
                     <th className="px-5 py-3 font-medium">Legal name</th>
@@ -188,20 +191,23 @@ export default function PartnersPage({ kind }) {
                       }}
                       className="cursor-pointer transition-colors hover:bg-brand-50 focus-visible:bg-brand-50 focus-visible:outline-none"
                     >
+                      {/* The name cell carries no data-label: it is the card's own heading
+                          in stacked form, and "LEGAL NAME" above it says nothing the name
+                          does not. Every other cell needs its column back. */}
                       <td className="px-5 py-3">
                         {/* legalName is the only field POST /partners takes, but it is still
                             nullable server-side, so a row can reach here without one. */}
                         <span className="font-medium text-brand-700">{partner.legalName || `Untitled ${singular}`}</span>
                         {partner.tradeName && <p className="text-xs text-ink-400">{partner.tradeName}</p>}
                       </td>
-                      <td className="px-5 py-3 text-ink-600">{partner.businessType || '—'}</td>
-                      <td className="px-5 py-3 font-mono text-xs text-ink-600">
+                      <td data-label="Business type" className="px-5 py-3 text-ink-600">{partner.businessType || '—'}</td>
+                      <td data-label={idLabel} className="px-5 py-3 font-mono text-xs text-ink-600">
                         {partner[idField] || '—'}
                       </td>
-                      <td className="px-5 py-3">
+                      <td data-label="Status" className="px-5 py-3">
                         <PartnerStatusBadge status={partner.status} />
                       </td>
-                      <td className="px-5 py-3 text-ink-600">{formatDate(partner.updatedAt)}</td>
+                      <td data-label="Updated" className="px-5 py-3 text-ink-600">{formatDate(partner.updatedAt)}</td>
                       <td
                         className="px-5 py-3 text-right"
                         onClick={(e) => e.stopPropagation()}
