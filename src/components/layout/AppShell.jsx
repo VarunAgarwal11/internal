@@ -24,16 +24,27 @@ const NAV_ITEMS = [
     permission: `${kind}:read`,
     icon,
   })),
+  // A list, not a single string: it spans every kind (whichever {kind}:login this user
+  // holds any of), rather than gating on one fixed permission the way the rows above do.
+  {
+    to: '/partner-logins',
+    label: 'Partner Logins',
+    permission: Object.keys(KINDS).map((kind) => `${kind}:login`),
+    icon: 'key',
+  },
   { to: '/admin/users', label: 'Users', permission: 'user:manage', icon: 'users' },
   { to: '/admin/roles', label: 'Roles', permission: 'role:manage', icon: 'shield' },
 ]
 
+function hasPermission(can, permission) {
+  if (!permission) return true
+  return Array.isArray(permission) ? permission.some(can) : can(permission)
+}
+
 // The sidebar and "/" have to agree on what this user can see, or landing on "/" sends
 // them to a page their own menu does not list.
 export function visibleNavItems({ can, isAdmin }) {
-  return NAV_ITEMS.filter(
-    (item) => (!item.adminOnly || isAdmin) && (!item.permission || can(item.permission))
-  )
+  return NAV_ITEMS.filter((item) => (!item.adminOnly || isAdmin) && hasPermission(can, item.permission))
 }
 
 const ICONS = {
@@ -88,6 +99,14 @@ const ICONS = {
   logout: (
     <path
       d="M8 4H5v12h3M12 10.5l3-3.5M12 10.5l3 3.5M12 10.5H8"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  ),
+  key: (
+    <path
+      d="M10.2 7a3.2 3.2 0 11-6.4 0 3.2 3.2 0 016.4 0zM9.6 9.4l6.9 6.9M13 12.7l1.7-1.7M15.2 14.9l1.7-1.7"
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"

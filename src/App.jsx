@@ -9,9 +9,11 @@ import DashboardPage from './pages/DashboardPage'
 import PartnersPage from './pages/PartnersPage'
 import PartnerFormPage from './pages/PartnerFormPage'
 import PartnerReviewPage from './pages/PartnerReviewPage'
+import PartnerLoginsPage from './pages/PartnerLoginsPage'
 import AdminUsersPage from './pages/AdminUsersPage'
 import AdminRolesPage from './pages/AdminRolesPage'
 import NotFoundPage from './pages/NotFoundPage'
+import { KINDS } from './config/kinds'
 
 // "/" has no page of its own — it forwards to the first sidebar entry this user can
 // actually see (the dashboard for an admin, their first section otherwise). Without it a
@@ -71,6 +73,16 @@ export default function App() {
             <Route element={<ProtectedRoute permission="logistics_cha:read" />}>
               <Route path="/logistics-cha" element={<PartnersPage kind="logistics_cha" />} />
               <Route path="/logistics-cha/:partnerId" element={<PartnerFormPage kind="logistics_cha" />} />
+            </Route>
+
+            {/* An array permission — "any of these" — since this spans every kind's own
+                {kind}:login rather than one fixed string. See ProtectedRoute. */}
+            <Route
+              element={
+                <ProtectedRoute permission={Object.keys(KINDS).map((kind) => `${kind}:login`)} />
+              }
+            >
+              <Route path="/partner-logins" element={<PartnerLoginsPage />} />
             </Route>
 
             <Route element={<ProtectedRoute permission="user:manage" />}>

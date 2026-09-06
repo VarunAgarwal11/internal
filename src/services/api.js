@@ -97,6 +97,25 @@ export const respondToReview = (token, { response, comment }) =>
 export const reviewPdfUrl = (token) => `${http.BASE_URL}/review/${encodeURIComponent(token)}/pdf`
 
 // ---------------------------------------------------------------------------
+// Partner logins — staff mint and manage the login an approved partner signs in with,
+// on the separate partner-portal app. Gated on {kind}:login, not {kind}:approve — see
+// deps.ACTIONS's comment in the backend for why the two are kept apart.
+// ---------------------------------------------------------------------------
+
+export const getPartnerLogins = (partnerId) => http.get(`/partners/${partnerId}/logins`)
+
+export const createPartnerLogin = (partnerId, { fullName, email, password }) =>
+  http.post(`/partners/${partnerId}/logins`, { fullName, email, password })
+
+// `patch` carries whatever subset of {fullName, status, password} changed. A password
+// here always re-arms mustChangePassword server-side and evicts the partner's live
+// session — see routers/partner_logins.py.
+export const updatePartnerLogin = (partnerId, loginId, patch) =>
+  http.patch(`/partners/${partnerId}/logins/${loginId}`, patch)
+
+export const deletePartnerLogin = (partnerId, loginId) => http.del(`/partners/${partnerId}/logins/${loginId}`)
+
+// ---------------------------------------------------------------------------
 // Permissions & roles — the catalog is server-owned. See AuthContext's `can`.
 // ---------------------------------------------------------------------------
 

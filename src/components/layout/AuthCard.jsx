@@ -11,7 +11,7 @@ export default function AuthCard({ title, subtitle, children }) {
     <div className="app-ambient-bg flex min-h-dvh items-center justify-center px-4 py-12">
       <motion.div {...authEnter} className="w-full max-w-md">
         <p className="mb-6 text-center text-xl font-semibold tracking-tight text-brand-700">
-          Mavio Global<span className="ml-2 font-normal text-ink-400">Partner Portal</span>
+          Mavio Global<span className="ml-2 font-normal text-ink-400">Internal Portal</span>
         </p>
         <Card variant="strong" className="rounded-3xl p-7 sm:p-9">
           {title && <h1 className="text-xl font-semibold text-ink-900">{title}</h1>}
